@@ -1,10 +1,8 @@
 name: CI · Test & Verify
 
+# Trigger manually from the Actions tab (switch back to push/pull_request once GitHub Actions billing is active)
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   test:
