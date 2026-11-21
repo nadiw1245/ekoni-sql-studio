@@ -1,5 +1,5 @@
 @echo off
-title EKONI Auto-Start Installer - Survives PC Shutdown and Restart
+title EKONI Auto-Start Installer - Survives PC Shutdown, Reboot and Sleep
 setlocal
 
 set "APP_DIR=%~dp0"
@@ -8,7 +8,7 @@ set "STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
 
 echo.
 echo  ==================================================================
-echo   EKONI Localhost Auto-Start Setup (Windows Startup)
+echo   EKONI Localhost Auto-Start Setup (Task Scheduler + Startup)
 echo  ==================================================================
 echo.
 
@@ -28,7 +28,10 @@ if not exist "%STARTUP_DIR%" mkdir "%STARTUP_DIR%"
   echo End If
 ) > "%STARTUP_DIR%\EkoniSQLStudio.vbs"
 
-echo  [OK] Installed Startup Launcher: EkoniSQLStudio.vbs  - http://localhost:3344
+echo  [OK] Installed Startup Launcher: EkoniSQLStudio.vbs - http://localhost:3344
+
+powershell -NoProfile -Command "$u=\"$env:USERDOMAIN\$env:USERNAME\"; $a=New-ScheduledTaskAction -Execute \"$env:WINDIR\System32\wscript.exe\" -Argument '\"%APP_DIR%\start-silent.vbs\"'; $t=New-ScheduledTaskTrigger -AtLogOn -User $u; $s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -MultipleInstances IgnoreNew; $p=New-ScheduledTaskPrincipal -UserId $u -LogonType Interactive -RunLevel Limited; Register-ScheduledTask -TaskName 'EkoniSQLStudio' -Action $a -Trigger $t -Settings $s -Principal $p -Description 'Auto-starts EKONI SQL Studio on http://localhost:3344' -Force | Out-Null; Start-ScheduledTask -TaskName 'EkoniSQLStudio'"
+echo  [OK] Registered Windows Scheduled Task: EkoniSQLStudio (runs independently on battery and AC)
 
 for %%I in ("%APP_DIR%\..") do set "PARENT_DIR=%%~fI"
 if exist "%PARENT_DIR%\ubuntu-cli-terminal\server.js" (
@@ -45,17 +48,13 @@ if exist "%PARENT_DIR%\ubuntu-cli-terminal\server.js" (
     echo   sh.Run """" ^& nodeExe ^& """ ""%PARENT_DIR%\ubuntu-cli-terminal\server.js""", 0, False
     echo End If
   ) > "%STARTUP_DIR%\EkoniUbuntuCLI.vbs"
-  echo  [OK] Installed Startup Launcher: EkoniUbuntuCLI.vbs  - http://localhost:3333
+  powershell -NoProfile -Command "$u=\"$env:USERDOMAIN\$env:USERNAME\"; $a=New-ScheduledTaskAction -Execute \"$env:WINDIR\System32\wscript.exe\" -Argument '\"%PARENT_DIR%\ubuntu-cli-terminal\start-silent.vbs\"'; $t=New-ScheduledTaskTrigger -AtLogOn -User $u; $s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -MultipleInstances IgnoreNew; $p=New-ScheduledTaskPrincipal -UserId $u -LogonType Interactive -RunLevel Limited; Register-ScheduledTask -TaskName 'EkoniUbuntuCLI' -Action $a -Trigger $t -Settings $s -Principal $p -Description 'Auto-starts EKONI Ubuntu CLI on http://localhost:3333' -Force | Out-Null; Start-ScheduledTask -TaskName 'EkoniUbuntuCLI'"
+  echo  [OK] Registered Windows Scheduled Task: EkoniUbuntuCLI - http://localhost:3333
 )
 
 echo.
-echo  Starting server now in silent background mode...
-wscript.exe "%STARTUP_DIR%\EkoniSQLStudio.vbs"
-if exist "%STARTUP_DIR%\EkoniUbuntuCLI.vbs" wscript.exe "%STARTUP_DIR%\EkoniUbuntuCLI.vbs"
-
-echo.
-echo  DONE! Every time you shutdown or restart Windows, your localhost
-echo  workspace will boot automatically with zero console popups:
+echo  DONE! EKONI SQL Studio now runs as an independent Windows background
+echo  task that survives closing your IDE, sleep, shutdown, and reboot:
 echo    - EKONI SQL Studio : http://localhost:3344
 echo.
 echo  To remove auto-start anytime, run: uninstall-autostart.bat
