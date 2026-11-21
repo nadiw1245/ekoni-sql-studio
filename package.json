@@ -1,0 +1,41 @@
+{
+  "name": "ekoni-sql-studio",
+  "version": "2.5.0",
+  "description": "Next-generation MySQL 9.7 LTS & phpMyAdmin Pro SQL Workbench — built-in AI VECTOR(N) SQL, live MySQL/Cloud SSL connections, Visual Query Builder, Data Profiler, Draggable ER Designer, Instant REST API & ORM Codegen, and 12 EKONI themes.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "keywords": [
+    "sql",
+    "mysql",
+    "mysql-9",
+    "phpmyadmin",
+    "sqlite",
+    "database-gui",
+    "sql-studio",
+    "vector-database",
+    "er-diagram",
+    "query-builder",
+    "rest-api",
+    "ekoni",
+    "developer-tools"
+  ],
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/sql.test.js",
+    "check": "node -e \"const fs=require('fs'),path=require('path'),cp=require('child_process');const walk=d=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.name==='node_modules'||e.name==='.git'?[]:e.isDirectory()?walk(path.join(d,e.name)):e.name.endsWith('.js')?[path.join(d,e.name)]:[]);const files=walk('.');files.forEach(f=>cp.execFileSync(process.execPath,['--check',f]));console.log('Syntax OK on '+files.length+' JS files');\""
+  },
+  "homepage": "https://github.com/nadiw1245/ekoni-sql-studio#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nadiw1245/ekoni-sql-studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nadiw1245/ekoni-sql-studio/issues"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "mysql2": "^3.24.6"
+  }
+}

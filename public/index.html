@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="tokyo-night" data-mode="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EKONI SQL Studio · phpMyAdmin Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="desktopWallpaper" class="desktop-wallpaper"></div>
+
+  <div class="studio-shell">
+    <!-- ====================================================================
+         EKONI SQL WAYBAR TOP BAR (Crisp Custom SVG Icons)
+         ==================================================================== -->
+    <header class="waybar">
+      <div class="wb-left">
+        <button class="wb-menu-btn" id="launcherTrigger" title="EKONI Command Launcher (Alt+Space / Ctrl+K)">
+          <span class="ico-slot" data-ico="database" data-size="14"></span>
+          <span>EKONI SQL</span>
+        </button>
+
+        <div class="db-picker-group">
+          <button class="wb-pill conn-pill" id="connectionsBtn" title="Connect to Real MySQL 9.7 / 8.4 / XAMPP / Online Cloud MySQL">
+            <span class="ico-slot" data-ico="link" data-size="13"></span>
+            <span id="connLabel">Built-in (MySQL 9.7)</span>
+          </button>
+          <select id="dbSelect" class="wb-select" title="Switch Active Database" aria-label="Database"></select>
+          <button class="wb-icon-btn" id="newDbBtn" title="Create New Database"><span class="ico-slot" data-ico="plus" data-size="14"></span></button>
+          <button class="wb-pill" id="newTableTopBtn" title="Visual Create Table Designer">
+            <span class="ico-slot" data-ico="plusSquare" data-size="13"></span><span>New Table</span>
+          </button>
+          <button class="wb-pill" id="importBtn" title="Import .sql, .csv, or .json">
+            <span class="ico-slot" data-ico="upload" data-size="13"></span><span>Import</span>
+          </button>
+          <button class="wb-pill" id="exportDbBtn" title="Export Full Database .sql Dump">
+            <span class="ico-slot" data-ico="download" data-size="13"></span><span>Export .sql</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="wb-center">
+        <button class="wb-run-btn" id="runBtn" title="Run SQL Query (Ctrl+Enter)">
+          <span class="ico-slot" data-ico="play" data-size="12"></span>
+          <span>Run</span>
+          <kbd>Ctrl+↵</kbd>
+        </button>
+        <button class="wb-pill" id="formatBtn" title="Format SQL (Alt+Shift+F)">
+          <span class="ico-slot" data-ico="wand" data-size="13"></span><span>Format</span>
+        </button>
+        <button class="wb-pill" id="explainBtn" title="EXPLAIN QUERY PLAN (Ctrl+E)">
+          <span class="ico-slot" data-ico="zap" data-size="13"></span><span>Explain</span>
+        </button>
+        <button class="wb-pill" id="cookbookBtn" title="SQL Query Cookbook">
+          <span class="ico-slot" data-ico="book" data-size="13"></span><span>Cookbook</span>
+        </button>
+        <button class="wb-pill" id="bookmarksBtn" title="Saved Query Bookmarks">
+          <span class="ico-slot" data-ico="bookmark" data-size="13"></span><span>Bookmarks</span>
+        </button>
+        <button class="wb-pill" id="historyBtn" title="Persistent Query History (Ctrl+R)">
+          <span class="ico-slot" data-ico="clock" data-size="13"></span><span>History</span>
+        </button>
+      </div>
+
+      <div class="wb-right">
+        <span class="wb-engine-pill" id="engineBadge">SQLite 3 · phpMyAdmin Compat</span>
+        <button class="wb-theme-pill" id="themeQuickBtn" title="Aether Theme & Glass Studio (Alt+A)">
+          <span class="wb-theme-dot"></span>
+          <span id="wbThemeName">Tokyo Night</span>
+        </button>
+        <button class="wb-icon-btn" id="wallpaperBtn" title="Cycle Ambient Wallpaper (Alt+Shift+W)">
+          <span class="ico-slot" data-ico="sparkles" data-size="14"></span>
+        </button>
+        <button class="wb-icon-btn" id="hotkeysBtn" title="Keyboard Shortcuts (Alt+K)">
+          <span class="ico-slot" data-ico="keyboard" data-size="14"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ====================================================================
+         FLAGSHIP WORKSPACE: SLEEK DUOTONE ICON RAIL + SCHEMA + MULTI-STUDIO
+         ==================================================================== -->
+    <main class="workspace-grid" id="workspaceGrid">
+      <!-- FAR-LEFT SLEEK DUOTONE ICON NAVIGATION RAIL -->
+      <nav class="nav-rail" id="pmaModeBar" role="tablist" aria-label="Workspace Modules">
+        <button class="rail-btn" data-mode="overview" title="Database Overview & KPI Dashboard">
+          <span class="ico-slot" data-ico="home" data-size="18"></span>
+          <span class="rail-lbl">Home</span>
+        </button>
+        <button class="rail-btn active" data-mode="sql" title="SQL Console (MySQL / phpMyAdmin / SQLite)">
+          <span class="ico-slot" data-ico="terminal" data-size="18"></span>
+          <span class="rail-lbl">SQL</span>
+        </button>
+        <button class="rail-btn" data-mode="browse" title="Browse & Inline Edit Table Data">
+          <span class="ico-slot" data-ico="browse" data-size="18"></span>
+          <span class="rail-lbl">Browse</span>
+        </button>
+        <button class="rail-btn" data-mode="structure" title="Table Structure, Columns & Indexes">
+          <span class="ico-slot" data-ico="structure" data-size="18"></span>
+          <span class="rail-lbl">Struct</span>
+        </button>
+        <button class="rail-btn" data-mode="builder" title="Visual No-Code SQL Query Builder">
+          <span class="ico-slot" data-ico="builder" data-size="18"></span>
+          <span class="rail-lbl">Builder</span>
+        </button>
+        <button class="rail-btn" data-mode="profiler" title="Instant Column Data Quality Profiler">
+          <span class="ico-slot" data-ico="profiler" data-size="18"></span>
+          <span class="rail-lbl">Profile</span>
+        </button>
+        <button class="rail-btn" data-mode="insert" title="Insert Row & Mock Data Generator">
+          <span class="ico-slot" data-ico="plusSquare" data-size="18"></span>
+          <span class="rail-lbl">Insert</span>
+        </button>
+        <button class="rail-btn" data-mode="search" title="Visual Query-by-Example Table Search">
+          <span class="ico-slot" data-ico="search" data-size="18"></span>
+          <span class="rail-lbl">Search</span>
+        </button>
+        <button class="rail-btn" data-mode="views" title="Views & Automated Triggers Manager">
+          <span class="ico-slot" data-ico="triggers" data-size="18"></span>
+          <span class="rail-lbl">Views</span>
+        </button>
+        <button class="rail-btn" data-mode="designer" title="Interactive Draggable ER Schema Designer">
+          <span class="ico-slot" data-ico="diagram" data-size="18"></span>
+          <span class="rail-lbl">ER Map</span>
+        </button>
+        <button class="rail-btn" data-mode="api" title="Instant REST API & ORM Code Generator">
+          <span class="ico-slot" data-ico="api" data-size="18"></span>
+          <span class="rail-lbl">API</span>
+        </button>
+        <button class="rail-btn" data-mode="operations" title="Operations & Time-Travel DB Snapshots">
+          <span class="ico-slot" data-ico="sliders" data-size="18"></span>
+          <span class="rail-lbl">Ops</span>
+        </button>
+        <div class="rail-spacer"></div>
+        <button class="rail-btn rail-toggle-schema" id="toggleSchemaBtn" title="Toggle Schema Sidebar">
+          <span class="ico-slot" data-ico="sidebar" data-size="17"></span>
+          <span class="rail-lbl">Tree</span>
+        </button>
+      </nav>
+
+      <!-- LEFT PANE: LIVE DATABASE & SCHEMA EXPLORER -->
+      <section class="glass-pane schema-pane" id="schemaPane">
+        <div class="pane-hdr">
+          <div class="pane-hdr-left">
+            <span class="pane-dot"></span>
+            <span class="pane-title">SCHEMA</span>
+          </div>
+          <div class="pane-hdr-actions">
+            <button class="pane-mini-btn" id="newTableSideBtn" title="Create New Table">
+              <span class="ico-slot" data-ico="plus" data-size="12"></span> Tbl
+            </button>
+            <button class="pane-mini-btn" id="refreshSchemaBtn" title="Refresh Schema">
+              <span class="ico-slot" data-ico="refresh" data-size="12"></span>
+            </button>
+          </div>
+        </div>
+        <div class="schema-search-wrap">
+          <input type="text" id="schemaSearch" class="mini-input" placeholder="Filter tables & columns..." autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="schema-tree" id="schemaTree"></div>
+      </section>
+
+      <div class="split-gutter-h" id="gutterH" title="Drag to resize Schema Explorer"></div>
+
+      <!-- RIGHT WORKSPACE CONTAINER -->
+      <div class="right-workspace">
+        <!-- MODE: SQL CONSOLE (2-PANE RESIZABLE EDITOR + OUTPUT) -->
+        <div class="right-stack" id="sqlModeView">
+          <!-- TOP: MULTI-TAB SQL EDITOR -->
+          <section class="glass-pane editor-pane focused" id="editorPane">
+            <div class="pane-hdr">
+              <div class="editor-tabs" id="editorTabs"></div>
+              <div class="pane-hdr-actions">
+                <button class="pane-mini-btn" id="newTabBtn" title="New SQL Query Tab"><span class="ico-slot" data-ico="plus" data-size="12"></span></button>
+                <button class="pane-mini-btn" id="saveBookmarkBtn" title="Bookmark Current SQL Query"><span class="ico-slot" data-ico="bookmark" data-size="12"></span> Save</button>
+                <button class="pane-mini-btn" id="runSelBtn" title="Run Selected SQL (Ctrl+Shift+Enter)"><span class="ico-slot" data-ico="play" data-size="11"></span> Sel</button>
+                <button class="pane-mini-btn" id="clearEditorBtn" title="Clear Editor">Clr</button>
+              </div>
+            </div>
+
+            <div class="editor-body" id="editorBody">
+              <div class="editor-gutter" id="editorGutter">1</div>
+              <div class="editor-surface">
+                <pre class="editor-highlight" id="editorHighlight" aria-hidden="true"></pre>
+                <textarea
+                  id="sqlInput"
+                  class="sql-textarea"
+                  spellcheck="false"
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  aria-label="SQL Query Editor"
+                  placeholder="-- Run ANY SQL (MySQL / phpMyAdmin / SQLite / PostgreSQL): SHOW TABLES, DESCRIBE, SELECT, JOIN, CTE, CREATE TABLE..."
+                ></textarea>
+              </div>
+
+              <div class="ac-popup hidden" id="acPopup" role="listbox">
+                <div class="ac-hdr">
+                  <span class="ac-title" id="acTitle">SQL IntelliSense</span>
+                  <span class="ac-hint">Tab / Enter accept • ↑↓ select • Esc close</span>
+                </div>
+                <div class="ac-list" id="acList"></div>
+              </div>
+            </div>
+
+            <!-- phpMyAdmin Quick SQL Template Buttons -->
+            <div class="editor-statusbar">
+              <div class="sql-quick-chips">
+                <span id="editorCursorPos">Ln 1, Col 1</span>
+                <button class="q-chip" data-snip="show">SHOW TABLES</button>
+                <button class="q-chip" data-snip="select">SELECT *</button>
+                <button class="q-chip" data-snip="desc">DESCRIBE</button>
+                <button class="q-chip" data-snip="insert">INSERT</button>
+                <button class="q-chip" data-snip="update">UPDATE</button>
+                <button class="q-chip" data-snip="delete">DELETE</button>
+              </div>
+              <span id="editorSelInfo" class="muted">MySQL / phpMyAdmin / SQLite Universal Mode</span>
+            </div>
+          </section>
+
+          <div class="split-gutter-v" id="gutterV" title="Drag to resize Editor / Output"></div>
+
+          <!-- BOTTOM: MULTI-VIEW OUTPUT STUDIO -->
+          <section class="glass-pane output-pane" id="outputPane">
+            <div class="pane-hdr output-hdr">
+              <div class="output-left-controls">
+                <div class="view-tabs" id="viewTabs">
+                  <button class="view-tab active" data-view="table"><span class="ico-slot" data-ico="table" data-size="13"></span><span>Table</span></button>
+                  <button class="view-tab" data-view="chart"><span class="ico-slot" data-ico="chart" data-size="13"></span><span>Chart</span></button>
+                  <button class="view-tab" data-view="json"><span class="ico-slot" data-ico="braces" data-size="13"></span><span>JSON</span></button>
+                  <button class="view-tab" data-view="explain"><span class="ico-slot" data-ico="zap" data-size="13"></span><span>Explain</span></button>
+                </div>
+                <div class="result-set-tabs hidden" id="resultSetTabs"></div>
+              </div>
+
+              <div class="output-right-controls">
+                <input type="text" id="resultFilter" class="mini-input result-filter" placeholder="Filter rows..." autocomplete="off" spellcheck="false" />
+                <div class="export-group">
+                  <button class="pane-mini-btn" id="expCsvBtn" title="Download CSV">CSV</button>
+                  <button class="pane-mini-btn" id="expJsonBtn" title="Download JSON">JSON</button>
+                  <button class="pane-mini-btn" id="expMdBtn" title="Copy Markdown Table">MD</button>
+                  <button class="pane-mini-btn" id="expSqlBtn" title="Copy SQL INSERT statements">SQL</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="output-meta-bar" id="outputMetaBar">
+              <span class="meta-pill" id="metaStatus">Ready</span>
+              <span class="meta-info" id="metaDetail">Press Ctrl+Enter to run any SQL command</span>
+            </div>
+
+            <div class="output-body" id="outputBody">
+              <div class="empty-state">Execute a SQL query (<code>Ctrl+Enter</code>) to view results, charts, JSON, and query plans.</div>
+            </div>
+          </section>
+        </div>
+
+        <!-- MODE 2..7: FULL PHPMYADMIN VISUAL PANEL (Browse / Structure / Insert / Search / ER Designer / Operations) -->
+        <section class="glass-pane pma-stage hidden" id="pmaStage"></section>
+      </div>
+    </main>
+
+    <!-- Bottom Status Strip -->
+    <footer class="statusbar">
+      <div class="status-left">
+        <span class="status-badge" id="statusDbBadge">ecommerce.db</span>
+        <span class="status-text" id="statusSchemaSummary">Loading schema...</span>
+      </div>
+      <div class="status-right">
+        <span class="hint-chip"><kbd>Ctrl+Enter</kbd> Run</span>
+        <span class="hint-chip"><kbd>Ctrl+Space</kbd> Complete</span>
+        <span class="hint-chip"><kbd>Alt+Space</kbd> Launcher</span>
+        <span class="hint-chip"><kbd>Alt+A</kbd> Themes</span>
+        <span class="hint-chip"><kbd>Ctrl+R</kbd> History</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Toast Stack -->
+  <div id="toastStack" class="toast-stack"></div>
+
+  <!-- ====================================================================
+       VISUAL CREATE TABLE MODAL (phpMyAdmin Table Designer)
+       ==================================================================== -->
+  <div class="modal-backdrop hidden" id="createTableModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-hdr">
+        <div>
+          <span class="badge-accent">CREATE TABLE</span>
+          <span class="modal-sub">Visual phpMyAdmin Table Designer</span>
+        </div>
+        <button class="pane-mini-btn" id="ctCloseBtn">Esc</button>
+      </div>
+      <div class="ct-body">
+        <div class="ct-top-row">
+          <label>Table Name <input type="text" id="ctTableName" class="mini-input" placeholder="e.g. students" spellcheck="false" /></label>
+          <button class="pane-mini-btn" id="ctAddColBtn">+ Add Column</button>
+        </div>
+        <div class="ct-table-wrap">
+          <table class="sql-table ct-grid">
+            <thead>
+              <tr><th>Column Name</th><th>Type</th><th>PK</th><th>AI</th><th>Not Null</th><th>Unique</th><th>Default</th><th></th></tr>
+            </thead>
+            <tbody id="ctColsBody"></tbody>
+          </table>
+        </div>
+        <pre class="pma-ddl-pre" id="ctPreviewSql"></pre>
+        <div class="import-actions">
+          <span class="muted" style="font-size:11.5px">Live generated SQL preview</span>
+          <button class="wb-run-btn" id="ctSubmitBtn">Create Table</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       ROW EDIT MODAL (phpMyAdmin Edit Row)
+       ==================================================================== -->
+  <div class="modal-backdrop hidden" id="rowEditModal">
+    <div class="modal-card modal-md">
+      <div class="modal-hdr">
+        <span class="badge-accent" id="rowEditTitle">Edit Row</span>
+        <button class="pane-mini-btn" id="rowEditCloseBtn">Esc</button>
+      </div>
+      <div class="pma-padded" style="max-height:65vh;overflow-y:auto">
+        <div id="rowEditForm" class="pma-form-grid"></div>
+        <div class="pma-form-actions">
+          <button class="wb-run-btn" id="rowEditSaveBtn">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       EKONI LAUNCHER MODAL (Alt+Space / Ctrl+K)
+       ==================================================================== -->
+  <div class="modal-backdrop hidden" id="launcherModal">
+    <div class="modal-card modal-md">
+      <div class="modal-hdr">
+        <span class="badge-accent">EKONI SQL</span>
+        <input type="text" id="launcherInput" class="modal-search-input" placeholder="Search phpMyAdmin tools, queries, 12 themes, wallpapers..." autocomplete="off" spellcheck="false" />
+        <kbd class="kbd-tag">Esc</kbd>
+      </div>
+      <div class="modal-list" id="launcherList"></div>
+      <div class="modal-ftr">
+        <span><kbd>↑↓</kbd> Navigate (live theme preview)</span>
+        <span><kbd>Enter</kbd> Run / Apply</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       AETHER THEME & GLASS STUDIO MODAL (Alt+A)
+       ==================================================================== -->
+  <div class="modal-backdrop hidden" id="aetherModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-hdr">
+        <div>
+          <span class="badge-accent">AETHER STUDIO</span>
+          <span class="modal-sub">12 EKONI Themes, Ambient Wallpapers & Hyprland Glass</span>
+        </div>
+        <button class="pane-mini-btn" id="aetherCloseBtn">Esc</button>
+      </div>
+      <div class="aether-body">
+        <div class="sec-lbl">Themes</div>
+        <div class="aether-theme-grid" id="aetherThemeGrid"></div>
+        <div class="sec-lbl">Ambient Wallpapers</div>
+        <div class="aether-wp-row" id="aetherWpRow"></div>
+        <div class="sec-lbl">Glass, Gaps & Editor Typography</div>
+        <div class="ae-sliders">
+          <label class="ae-slider"><span>Opacity <strong id="aeOpacityVal">88%</strong></span><input type="range" id="aeOpacity" min="60" max="100" value="88" /></label>
+          <label class="ae-slider"><span>Blur <strong id="aeBlurVal">14px</strong></span><input type="range" id="aeBlur" min="0" max="28" value="14" /></label>
+          <label class="ae-slider"><span>Gap <strong id="aeGapVal">9px</strong></span><input type="range" id="aeGap" min="0" max="20" value="9" /></label>
+          <label class="ae-slider"><span>Radius <strong id="aeRadiusVal">10px</strong></span><input type="range" id="aeRadius" min="0" max="20" value="10" /></label>
+          <label class="ae-slider"><span>Editor Font <strong id="aeFontSizeVal">13.5px</strong></span><input type="range" id="aeFontSize" min="11" max="19" step="0.5" value="13.5" /></label>
+          <label class="ae-slider"><span>Custom Accent</span><input type="color" id="aeAccentColor" value="#7aa2f7" /></label>
+        </div>
+        <div class="ae-bottom-row">
+          <button class="pane-mini-btn" id="aeResetBtn">Reset EKONI Defaults</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       IMPORT MODAL (.sql Dump, .csv, or .json)
+       ==================================================================== -->
+  <div class="modal-backdrop hidden" id="importModal">
+    <div class="modal-card modal-md">
+      <div class="modal-hdr">
+        <div>
+          <span class="badge-accent">IMPORT DATA / SQL</span>
+          <span class="modal-sub">Run phpMyAdmin .sql dumps or import CSV / JSON into a table</span>
+        </div>
+        <button class="pane-mini-btn" id="importCloseBtn">Esc</button>
+      </div>
+      <div class="import-body">
+        <div class="import-row">
+          <label>Format
+            <select id="importFormat" class="wb-select">
+              <option value="csv">CSV File / Text</option>
+              <option value="json">JSON Array</option>
+              <option value="sql">SQL Dump Script (.sql)</option>
+            </select>
+          </label>
+          <label id="importTblWrap">Table Name <input type="text" id="importTableName" class="mini-input" value="imported_data" spellcheck="false" /></label>
+          <label class="file-pick-btn">Choose File <input type="file" id="importFileInput" accept=".sql,.csv,.json,.txt" class="hidden" /></label>
+        </div>
+        <textarea id="importTextarea" class="import-textarea" spellcheck="false" placeholder="Paste CSV, JSON array, or a phpMyAdmin .sql dump script here..."></textarea>
+        <div class="import-actions">
+          <button class="pane-mini-btn" id="importSampleBtn">Fill Sample CSV</button>
+          <button class="wb-run-btn" id="importSubmitBtn">Import Now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SQL COOKBOOK MODAL -->
+  <div class="modal-backdrop hidden" id="cookbookModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-hdr">
+        <div>
+          <span class="badge-accent">SQL COOKBOOK</span>
+          <span class="modal-sub">Click any query to load and run immediately</span>
+        </div>
+        <button class="pane-mini-btn" id="cookbookCloseBtn">Esc</button>
+      </div>
+      <div class="modal-list cookbook-list" id="cookbookList"></div>
+    </div>
+  </div>
+
+  <!-- QUERY HISTORY MODAL -->
+  <div class="modal-backdrop hidden" id="historyModal">
+    <div class="modal-card modal-md">
+      <div class="modal-hdr">
+        <span class="badge-accent">QUERY HISTORY</span>
+        <input type="text" id="historySearchInput" class="modal-search-input" placeholder="Search past SQL queries..." autocomplete="off" spellcheck="false" />
+        <button class="pane-mini-btn" id="historyClearBtn">Clear</button>
+        <button class="pane-mini-btn" id="historyCloseBtn">Esc</button>
+      </div>
+      <div class="modal-list" id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- HOTKEYS MODAL -->
+  <div class="modal-backdrop hidden" id="hotkeysModal">
+    <div class="modal-card modal-md">
+      <div class="modal-hdr">
+        <div>
+          <span class="badge-accent">SHORTCUTS</span>
+          <span class="modal-sub">EKONI SQL Studio · phpMyAdmin Pro</span>
+        </div>
+        <button class="pane-mini-btn" id="hotkeysCloseBtn">Esc</button>
+      </div>
+      <div class="hk-list">
+        <div class="hk-row"><kbd>Ctrl + Enter</kbd><span>Run full SQL script (supports MySQL / phpMyAdmin / SQLite)</span></div>
+        <div class="hk-row"><kbd>Ctrl + Shift + Enter</kbd><span>Run highlighted SQL selection</span></div>
+        <div class="hk-row"><kbd>Ctrl + Space</kbd><span>Smart SQL Autocomplete (tables, aliases, columns, fns)</span></div>
+        <div class="hk-row"><kbd>Alt + Shift + F</kbd><span>Auto-format SQL query</span></div>
+        <div class="hk-row"><kbd>Ctrl + E</kbd><span>Run EXPLAIN QUERY PLAN</span></div>
+        <div class="hk-row"><kbd>Alt + Space</kbd><span>Open EKONI Unified Command Launcher</span></div>
+        <div class="hk-row"><kbd>Alt + A</kbd><span>Open Aether Theme & Glass Studio (12 Themes)</span></div>
+        <div class="hk-row"><kbd>Ctrl + R</kbd><span>Open Persistent Query History</span></div>
+        <div class="hk-row"><kbd>Alt + K</kbd><span>Show Keyboard Shortcuts</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE MYSQL 9.7 / 8.4 / CLOUD CONNECTIONS MANAGER MODAL -->
+  <div class="modal-backdrop hidden" id="connectionsModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-hdr">
+        <div>
+          <span class="badge-accent">MYSQL CONNECTIONS</span>
+          <span class="modal-sub">Switch between Built-in Engine (MySQL 9.7 Compat) or Real Live MySQL 9.7 / 8.4 / XAMPP / Cloud MySQL</span>
+        </div>
+        <button class="pane-mini-btn" id="connCloseBtn">Esc</button>
+      </div>
+      <div class="aether-body">
+        <div class="pma-card">
+          <div class="pma-card-hdr">
+            <span>Built-in Zero-Setup Engine (Always Works Offline)</span>
+            <button class="wb-run-btn" id="useBuiltinConnBtn">Use Built-in Engine</button>
+          </div>
+          <div class="muted" style="font-size:12px">Includes SQLite 3 + MySQL 9.7 LTS compatibility layer (<code>VECTOR(N)</code>, <code>DISTANCE()</code>, <code>SHOW TABLES</code>, <code>DESCRIBE</code>, <code>AUTO_INCREMENT</code>, 35+ MySQL functions).</div>
+        </div>
+
+        <div class="pma-card">
+          <div class="pma-card-hdr">
+            <span>Live MySQL / MariaDB / Cloud Connections</span>
+            <div style="display:flex;gap:6px">
+              <button class="pane-mini-btn hidden" id="startXamppBtn">Start Local XAMPP MySQL (3306)</button>
+            </div>
+          </div>
+          <div id="connProfilesList"></div>
+        </div>
+
+        <div class="pma-card">
+          <div class="pma-card-hdr">Add / Edit MySQL Server Connection (Local 127.0.0.1 or Online Cloud Host)</div>
+          <div class="ae-sliders">
+            <label class="ae-slider"><span>Profile Name</span><input type="text" id="cfName" class="mini-input" placeholder="e.g. MySQL 9.7 Local or Cloud DB" /></label>
+            <label class="ae-slider"><span>Host</span><input type="text" id="cfHost" class="mini-input" value="127.0.0.1" /></label>
+            <label class="ae-slider"><span>Port</span><input type="number" id="cfPort" class="mini-input" value="3306" /></label>
+            <label class="ae-slider"><span>Username</span><input type="text" id="cfUser" class="mini-input" value="root" /></label>
+            <label class="ae-slider"><span>Password</span><input type="password" id="cfPass" class="mini-input" placeholder="(blank for XAMPP root)" /></label>
+            <label class="ae-slider"><span>Default Database (optional)</span><input type="text" id="cfDb" class="mini-input" placeholder="e.g. mydb" /></label>
+          </div>
+          <div class="pma-form-actions" style="margin-top:6px">
+            <label class="pma-null-chk"><input type="checkbox" id="cfSsl" /> Use SSL / TLS (Required for Cloud MySQL)</label>
+            <div style="margin-left:auto;display:flex;gap:8px">
+              <button class="pane-mini-btn" id="cfTestBtn">Test Connection</button>
+              <button class="wb-run-btn" id="cfSaveConnectBtn">Save & Connect</button>
+            </div>
+          </div>
+          <div id="cfTestResult" class="muted" style="font-family:var(--font-mono);font-size:11.5px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOOKMARKS MODAL -->
+  <div class="modal-backdrop hidden" id="bookmarksModal">
+    <div class="modal-card modal-md">
+      <div class="modal-hdr">
+        <span class="badge-accent">BOOKMARKS</span>
+        <input type="text" id="bookmarkSearchInput" class="modal-search-input" placeholder="Search saved SQL bookmarks..." autocomplete="off" spellcheck="false" />
+        <button class="pane-mini-btn" id="bookmarksCloseBtn">Esc</button>
+      </div>
+      <div class="modal-list" id="bookmarksList"></div>
+    </div>
+  </div>
+
+  <!-- CELL INSPECTOR MODAL -->
+  <div class="modal-backdrop hidden" id="cellModal">
+    <div class="modal-card modal-sm">
+      <div class="modal-hdr">
+        <span class="badge-accent" id="cellModalCol">COLUMN</span>
+        <div>
+          <button class="pane-mini-btn" id="cellCopyBtn">Copy Value</button>
+          <button class="pane-mini-btn" id="cellCloseBtn">Esc</button>
+        </div>
+      </div>
+      <pre class="cell-inspector-body" id="cellModalBody"></pre>
+    </div>
+  </div>
+
+  <script src="/icons.js"></script>
+  <script src="/themes.js"></script>
+  <script src="/sql-editor.js"></script>
+  <script src="/chart-view.js"></script>
+  <script src="/pma-views.js"></script>
+  <script src="/pro-views.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

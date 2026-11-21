@@ -1,0 +1,13 @@
+# Render Blueprint - 1-Click 24/7 Online Deployment for EKONI SQL Studio
+# Push this folder to GitHub, then click New -> Blueprint in https://dashboard.render.com
+services:
+  - type: web
+    name: ekoni-sql-studio
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3344"

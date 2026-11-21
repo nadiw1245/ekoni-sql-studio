@@ -1,0 +1,33 @@
+name: Bug Report
+description: Report a bug or unexpected SQL/UI behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly.
+    validations:
+      required: true
+  - type: textarea
+    id: sql
+    attributes:
+      label: SQL Query or Reproduction Steps
+      description: Paste any SQL query or UI steps that trigger the issue.
+      render: sql
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Database Engine Mode
+      options:
+        - Built-in Engine (MySQL 9.7 Compat / SQLite 3)
+        - Live Local MySQL / XAMPP
+        - Live Remote / Cloud MySQL (SSL)
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: OS & Node Version
+      placeholder: "e.g. Windows 11, Node v24.19.0"

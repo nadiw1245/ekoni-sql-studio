@@ -1,0 +1,19 @@
+name: Feature Request
+description: Propose a new studio feature, SQL dialect improvement, or EKONI theme
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Tell us what workflow or SQL task this would improve.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you envision it working in EKONI SQL Studio.
+    validations:
+      required: true
