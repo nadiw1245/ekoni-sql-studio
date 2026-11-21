@@ -3,6 +3,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { SqlEngine } = require('./server/sql-engine');
 const { QueryHistoryStore } = require('./server/history');
 const { BookmarkStore } = require('./server/bookmarks');
@@ -43,12 +44,36 @@ function readJsonBody(req) {
   });
 }
 
-function sendJson(res, status, payload) {
-  res.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-cache',
-  });
-  res.end(JSON.stringify(payload));
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'no-referrer',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Content-Security-Policy':
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'",
+};
+
+function sendCompressed(req, res, status, extraHeaders, bodyBuf) {
+  const buf = Buffer.isBuffer(bodyBuf) ? bodyBuf : Buffer.from(String(bodyBuf), 'utf8');
+  const acceptEnc = String((req && req.headers && req.headers['accept-encoding']) || '');
+  if (buf.length > 1024 && /\bgzip\b/i.test(acceptEnc)) {
+    const gz = zlib.gzipSync(buf, { level: 6 });
+    res.writeHead(status, { ...SECURITY_HEADERS, ...extraHeaders, 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding' });
+    res.end(gz);
+    return;
+  }
+  res.writeHead(status, { ...SECURITY_HEADERS, ...extraHeaders });
+  res.end(buf);
+}
+
+function sendJson(res, status, payload, req) {
+  sendCompressed(
+    req,
+    res,
+    status,
+    { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+    JSON.stringify(payload)
+  );
 }
 
 async function handleApi(req, res, urlObj) {
@@ -242,8 +267,10 @@ async function handleApi(req, res, urlObj) {
     const table = urlObj.searchParams.get('table') || null;
     try {
       const dump = engine.exportSqlDump(db, table);
-      const filename = table ? `${table}.sql` : `${db.replace(/\.db$/, '')}_dump.sql`;
+      const rawName = table ? `${table}.sql` : `${db.replace(/\.db$/, '')}_dump.sql`;
+      const filename = rawName.replace(/[^A-Za-z0-9._-]/g, '_');
       res.writeHead(200, {
+        ...SECURITY_HEADERS,
         'Content-Type': 'application/sql; charset=utf-8',
         'Content-Disposition': `attachment; filename="${filename}"`,
       });
@@ -417,24 +444,23 @@ async function handleRequest(req, res) {
 
   const safeRel = urlObj.pathname === '/' ? 'index.html' : urlObj.pathname.replace(/^\/+/, '');
   const fullPath = path.resolve(PUBLIC_DIR, safeRel);
-  if (!fullPath.startsWith(PUBLIC_DIR)) {
-    res.writeHead(403, { 'Content-Type': 'text/plain' });
+  if (fullPath !== PUBLIC_DIR && !fullPath.startsWith(PUBLIC_DIR + path.sep)) {
+    res.writeHead(403, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' });
     res.end('Forbidden');
     return;
   }
 
   fs.readFile(fullPath, (err, data) => {
     if (err) {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.writeHead(404, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' });
       res.end('Not Found');
       return;
     }
     const ext = path.extname(fullPath).toLowerCase();
-    res.writeHead(200, {
+    sendCompressed(req, res, 200, {
       'Content-Type': MIME_TYPES[ext] || 'application/octet-stream',
       'Cache-Control': 'no-cache',
-    });
-    res.end(data);
+    }, data);
   });
 }
 
@@ -479,6 +505,15 @@ if (require.main === module) {
     });
   };
   listenPort(DEFAULT_PORT);
+
+  const shutdown = () => {
+    try { server.close(); } catch {}
+    try { engine.closeAll(); } catch {}
+    try { mysqlMgr.closeAll(); } catch {}
+    process.exit(0);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
-module.exports = { createServer, engine };
+module.exports = { createServer, engine, SECURITY_HEADERS };

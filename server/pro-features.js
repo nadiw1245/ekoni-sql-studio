@@ -312,18 +312,27 @@ function generateMockRows(engine, dbName, tableName, count = 10) {
 // Database Time-Travel Snapshots (1-Click Backup & Instant Restore)
 // =========================================================================
 function getSnapshotsDir(dataDir) {
-  const dir = path.join(dataDir, 'snapshots');
+  const dir = path.resolve(dataDir, 'snapshots');
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
 
+function safeResolveChild(parentDir, childName) {
+  const base = path.resolve(parentDir);
+  const safeBaseName = path.basename(String(childName || '')).replace(/\.{2,}/g, '_');
+  if (!safeBaseName || safeBaseName === '.' || safeBaseName === '..') return null;
+  const full = path.resolve(base, safeBaseName);
+  return full.startsWith(base + path.sep) ? full : null;
+}
+
 function listSnapshots(dataDir, dbName) {
   const dir = getSnapshotsDir(dataDir);
-  const prefix = `${dbName.replace(/\.db$/, '')}__`;
+  const safeDb = path.basename(String(dbName || '')).replace(/[^A-Za-z0-9_.-]/g, '_');
+  const prefix = `${safeDb.replace(/\.db$/, '')}__`;
   try {
     return fs
       .readdirSync(dir)
-      .filter((f) => f.endsWith('.db') && (!dbName || f.startsWith(prefix)))
+      .filter((f) => f.endsWith('.db') && (!safeDb || f.startsWith(prefix)))
       .map((name) => {
         const st = fs.statSync(path.join(dir, name));
         const label = name.slice(prefix.length, -3);
@@ -336,32 +345,48 @@ function listSnapshots(dataDir, dbName) {
 }
 
 function createSnapshot(engine, dataDir, dbName, label) {
-  if (dbName === ':memory:') return { ok: false, error: 'Snapshots require a disk database (.db)' };
-  const src = path.join(dataDir, dbName);
-  if (!fs.existsSync(src)) return { ok: false, error: 'Database file not found on disk' };
+  const safeDb = engine.resolveDbName(dbName);
+  if (safeDb === ':memory:') return { ok: false, error: 'Snapshots require a disk database (.db)' };
+  const src = safeResolveChild(dataDir, safeDb);
+  if (!src || !fs.existsSync(src)) return { ok: false, error: 'Database file not found on disk' };
+  // Flush WAL journal before copying so snapshot is 100% consistent
+  try {
+    const db = engine.getDb(safeDb);
+    db.exec('PRAGMA wal_checkpoint(TRUNCATE);');
+  } catch {}
   const dir = getSnapshotsDir(dataDir);
-  const cleanLabel = String(label || new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)).replace(/[^A-Za-z0-9_-]/g, '_');
-  const fileName = `${dbName.replace(/\.db$/, '')}__${cleanLabel}.db`;
-  fs.copyFileSync(src, path.join(dir, fileName));
-  return { ok: true, id: fileName, snapshots: listSnapshots(dataDir, dbName) };
+  const cleanLabel = String(label || new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64);
+  const fileName = `${safeDb.replace(/\.db$/, '')}__${cleanLabel || 'snap'}.db`;
+  const dest = safeResolveChild(dir, fileName);
+  if (!dest) return { ok: false, error: 'Invalid snapshot name' };
+  fs.copyFileSync(src, dest);
+  return { ok: true, id: fileName, snapshots: listSnapshots(dataDir, safeDb) };
 }
 
 function restoreSnapshot(engine, dataDir, dbName, snapshotId) {
-  if (dbName === ':memory:') return { ok: false, error: 'Cannot restore snapshot into :memory:' };
-  const snapFile = path.join(getSnapshotsDir(dataDir), path.basename(snapshotId));
-  if (!fs.existsSync(snapFile)) return { ok: false, error: 'Snapshot not found' };
-  if (engine.connections.has(dbName)) {
-    try { engine.connections.get(dbName).close(); } catch {}
-    engine.connections.delete(dbName);
+  const safeDb = engine.resolveDbName(dbName);
+  if (safeDb === ':memory:') return { ok: false, error: 'Cannot restore snapshot into :memory:' };
+  if (!String(snapshotId || '').endsWith('.db')) return { ok: false, error: 'Invalid snapshot ID' };
+  const snapFile = safeResolveChild(getSnapshotsDir(dataDir), snapshotId);
+  const targetDb = safeResolveChild(dataDir, safeDb);
+  if (!snapFile || !targetDb || !fs.existsSync(snapFile)) return { ok: false, error: 'Snapshot not found' };
+  if (engine.connections.has(safeDb)) {
+    try { engine.connections.get(safeDb).close(); } catch {}
+    engine.connections.delete(safeDb);
   }
-  fs.copyFileSync(snapFile, path.join(dataDir, dbName));
-  engine.getDb(dbName);
-  return { ok: true, schema: engine.getSchema(dbName) };
+  // Remove stale WAL/SHM sidecars before restoring clean snapshot
+  for (const suffix of ['-wal', '-shm']) {
+    try { if (fs.existsSync(targetDb + suffix)) fs.unlinkSync(targetDb + suffix); } catch {}
+  }
+  fs.copyFileSync(snapFile, targetDb);
+  engine.getDb(safeDb);
+  return { ok: true, schema: engine.getSchema(safeDb) };
 }
 
 function deleteSnapshot(dataDir, dbName, snapshotId) {
-  const snapFile = path.join(getSnapshotsDir(dataDir), path.basename(snapshotId));
-  if (fs.existsSync(snapFile)) fs.unlinkSync(snapFile);
+  if (!String(snapshotId || '').endsWith('.db')) return { ok: false, error: 'Invalid snapshot ID' };
+  const snapFile = safeResolveChild(getSnapshotsDir(dataDir), snapshotId);
+  if (snapFile && fs.existsSync(snapFile)) fs.unlinkSync(snapFile);
   return { ok: true, snapshots: listSnapshots(dataDir, dbName) };
 }
 

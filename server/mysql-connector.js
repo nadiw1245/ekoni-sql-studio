@@ -58,7 +58,7 @@ class MySqlManager {
   _save() {
     try {
       fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
-      fs.writeFileSync(this.filePath, JSON.stringify(this.profiles, null, 2), 'utf8');
+      fs.writeFileSync(this.filePath, JSON.stringify(this.profiles, null, 2), { encoding: 'utf8', mode: 0o600 });
     } catch {}
   }
 

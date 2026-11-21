@@ -101,8 +101,11 @@ function hasExecutableSql(stmt) {
 }
 
 function sanitizeDbName(name) {
-  let clean = String(name || 'ecommerce.db').trim().replace(/[^A-Za-z0-9_.:-]/g, '_');
-  if (!clean || clean === ':memory:') return ':memory:';
+  const raw = String(name || 'ecommerce.db').trim();
+  if (!raw || raw === ':memory:') return ':memory:';
+  // Strip path separators, drive colons, and dot-dot traversal sequences
+  let clean = path.basename(raw).replace(/[^A-Za-z0-9_.-]/g, '_').replace(/\.{2,}/g, '_').replace(/^\.+/, '');
+  if (!clean || clean === '.db' || clean === '.sqlite') clean = 'workspace';
   if (!clean.endsWith('.db') && !clean.endsWith('.sqlite')) clean += '.db';
   return clean;
 }
@@ -207,14 +210,27 @@ class SqlEngine {
     return sanitizeDbName(name);
   }
 
+  _resolveDbPath(cleanName) {
+    const base = path.resolve(this.dataDir);
+    const full = path.resolve(base, cleanName);
+    if (!full.startsWith(base + path.sep)) {
+      throw new Error('Invalid database path');
+    }
+    return full;
+  }
+
   getDb(dbName = 'ecommerce.db') {
     const clean = sanitizeDbName(dbName);
     if (this.connections.has(clean)) {
       return this.connections.get(clean);
     }
-    const location = clean === ':memory:' ? ':memory:' : path.join(this.dataDir, clean);
+    const location = clean === ':memory:' ? ':memory:' : this._resolveDbPath(clean);
     const db = new DatabaseSync(location);
     db.exec('PRAGMA foreign_keys = ON;');
+    db.exec('PRAGMA busy_timeout = 5000;');
+    if (clean !== ':memory:') {
+      try { db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;'); } catch {}
+    }
     registerCompatFunctions(db, () => clean);
     this.connections.set(clean, db);
     return db;

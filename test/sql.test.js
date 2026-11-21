@@ -347,6 +347,31 @@ async function runTests() {
       reloaded.closeAll();
     });
 
+    test('Security Hardening: Path Traversal Blocking, WAL Snapshot Safety & HTTP Security Headers', () => {
+      // 1. Database name traversal attempts cannot escape dataDir
+      const safe1 = engine.resolveDbName('../../etc/passwd');
+      assert.strictEqual(safe1.includes('..'), false);
+      assert.strictEqual(safe1.includes('/'), false);
+      assert.strictEqual(safe1.includes('\\'), false);
+      const safe2 = engine.resolveDbName('C:evil..db');
+      assert.strictEqual(safe2.includes(':'), false);
+      assert.strictEqual(safe2.includes('..'), false);
+      assert.strictEqual(engine.resolveDbName(':memory:'), ':memory:');
+
+      // 2. Snapshot API rejects path traversal & non-.db IDs
+      const badRestore = pro.restoreSnapshot(engine, tmpDir, '../../evil.db', '../package.json');
+      assert.strictEqual(badRestore.ok, false);
+      const badDelete = pro.deleteSnapshot(tmpDir, 'ecommerce.db', '../../server.js');
+      assert.strictEqual(badDelete.ok, false);
+
+      // 3. HTTP security headers exported & properly configured
+      const srv = require('../server');
+      assert.strictEqual(srv.SECURITY_HEADERS['X-Content-Type-Options'], 'nosniff');
+      assert.strictEqual(srv.SECURITY_HEADERS['X-Frame-Options'], 'SAMEORIGIN');
+      assert.ok(srv.SECURITY_HEADERS['Content-Security-Policy'].includes("script-src 'self'"));
+      srv.engine.closeAll();
+    });
+
     console.log(`\n\x1b[1;32mAll ${passed} SQL Studio test suites passed!\x1b[0m\n`);
   } finally {
     engine.closeAll();

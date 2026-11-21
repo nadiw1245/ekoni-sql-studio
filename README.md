@@ -7,7 +7,7 @@
 **The next-generation SQL Startup Workbench — combining 100% of phpMyAdmin, MySQL 9.7 LTS AI Vector SQL, Live MySQL/Cloud SSL Connections, Visual Query Builder, Draggable ER Designer, Data Quality Profiler, and Instant REST APIs in one ultra-fast frosted-glass UI.**
 
 <p>
-  <img src="https://img.shields.io/badge/Tests-14%2F14%20Passing-9ece6a?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Tests Passing" />
+  <img src="https://img.shields.io/badge/Tests-15%2F15%20Passing-9ece6a?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Tests Passing" />
   <img src="https://img.shields.io/badge/MySQL-9.7%20LTS%20%7C%208.4%20LTS-00758F?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL 9.7 LTS" />
   <img src="https://img.shields.io/badge/Node.js-24%2B%20Native%20SQLite-5FA04E?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node 24" />
   <img src="https://img.shields.io/badge/phpMyAdmin-100%25%20Parity%20%2B%20Pro-7aa2f7?style=for-the-badge" alt="phpMyAdmin Pro" />
@@ -208,7 +208,7 @@ curl "http://localhost:3344/api/rest/ecommerce.db/products?limit=5&sort=unit_pri
 
 ```bash
 npm run check   # Syntax validation across all JS files
-npm test        # 14 automated test suites (SQL, MySQL 9.7 Vector AI, phpMyAdmin CRUD, Pro features)
+npm test        # 15 automated test suites (SQL, MySQL 9.7 Vector AI, phpMyAdmin CRUD, Security Hardening)
 ```
 
 ---
