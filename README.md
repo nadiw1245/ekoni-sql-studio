@@ -7,7 +7,7 @@
 **The next-generation SQL Startup Workbench — combining 100% of phpMyAdmin, MySQL 9.7 LTS AI Vector SQL, Live MySQL/Cloud SSL Connections, Visual Query Builder, Draggable ER Designer, Data Quality Profiler, and Instant REST APIs in one ultra-fast frosted-glass UI.**
 
 <p>
-  <img src="https://img.shields.io/badge/Tests-15%2F15%20Passing-9ece6a?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Tests Passing" />
+  <img src="https://img.shields.io/badge/Tests-16%2F16%20Passing-9ece6a?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Tests Passing" />
   <img src="https://img.shields.io/badge/MySQL-9.7%20LTS%20%7C%208.4%20LTS-00758F?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL 9.7 LTS" />
   <img src="https://img.shields.io/badge/Node.js-24%2B%20Native%20SQLite-5FA04E?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node 24" />
   <img src="https://img.shields.io/badge/phpMyAdmin-100%25%20Parity%20%2B%20Pro-7aa2f7?style=for-the-badge" alt="phpMyAdmin Pro" />
@@ -168,11 +168,16 @@ docker run -p 3344:3344 -v ekoni_data:/app/data ekoni-sql-studio
 Want a permanent public `https://` web URL that works from any device even when your PC is powered off?
 
 <p>
+  <a href="https://vercel.com/new/clone?repository-url=https://github.com/nadiw1245/ekoni-sql-studio">
+    <img src="https://vercel.com/button" alt="Deploy with Vercel" />
+  </a>
+  &nbsp;
   <a href="https://render.com/deploy?repo=https://github.com/nadiw1245/ekoni-sql-studio">
     <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render" />
   </a>
 </p>
 
+- **Vercel (Zero-Config Serverless)**: Preconfigured with `vercel.json` + `api/index.js` + Node 24 (`node:sqlite` in `/tmp`) and live Cloud MySQL SSL support.
 - **Render (1-Click Blueprint)**: Click the button above or connect `nadiw1245/ekoni-sql-studio` in [Render Dashboard](https://dashboard.render.com) → **New +** → **Blueprint** — `render.yaml` and `Dockerfile` are preconfigured with `/api/health` checks.
 - **Railway / Fly.io**: Deploy directly from this repository using the included production `Dockerfile`.
 

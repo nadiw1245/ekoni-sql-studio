@@ -4,7 +4,7 @@
   "description": "Next-generation MySQL 9.7 LTS & phpMyAdmin Pro SQL Workbench — built-in AI VECTOR(N) SQL, live MySQL/Cloud SSL connections, Visual Query Builder, Data Profiler, Draggable ER Designer, Instant REST API & ORM Codegen, and 12 EKONI themes.",
   "main": "server.js",
   "engines": {
-    "node": ">=22.5.0"
+    "node": "24.x"
   },
   "keywords": [
     "sql",

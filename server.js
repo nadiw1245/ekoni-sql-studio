@@ -2,6 +2,7 @@
 
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
 const { SqlEngine } = require('./server/sql-engine');
@@ -11,8 +12,9 @@ const { MySqlManager } = require('./server/mysql-connector');
 const pro = require('./server/pro-features');
 const { COOKBOOK } = require('./server/seed-data');
 
+const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY);
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.EKONI_DATA_DIR || (IS_SERVERLESS ? path.join(os.tmpdir(), 'ekoni-sql-data') : path.join(__dirname, 'data'));
 const DEFAULT_PORT = parseInt(process.env.PORT || '3344', 10);
 
 const MIME_TYPES = {
@@ -31,6 +33,11 @@ const bookmarks = new BookmarkStore(path.join(DATA_DIR, 'bookmarks.json'));
 const mysqlMgr = new MySqlManager(DATA_DIR);
 
 function readJsonBody(req) {
+  // Vercel & serverless runtimes pre-parse req.body before invoking the handler
+  if (req && req.body !== undefined && req.body !== null) {
+    if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) return Promise.resolve(req.body);
+    try { return Promise.resolve(JSON.parse(String(req.body))); } catch { return Promise.resolve({}); }
+  }
   return new Promise((resolve) => {
     let raw = '';
     req.on('data', (chunk) => {
@@ -56,7 +63,7 @@ const SECURITY_HEADERS = {
 function sendCompressed(req, res, status, extraHeaders, bodyBuf) {
   const buf = Buffer.isBuffer(bodyBuf) ? bodyBuf : Buffer.from(String(bodyBuf), 'utf8');
   const acceptEnc = String((req && req.headers && req.headers['accept-encoding']) || '');
-  if (buf.length > 1024 && /\bgzip\b/i.test(acceptEnc)) {
+  if (!IS_SERVERLESS && buf.length > 1024 && /\bgzip\b/i.test(acceptEnc)) {
     const gz = zlib.gzipSync(buf, { level: 6 });
     res.writeHead(status, { ...SECURITY_HEADERS, ...extraHeaders, 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding' });
     res.end(gz);
@@ -81,7 +88,13 @@ async function handleApi(req, res, urlObj) {
 
   // Health probe for single-instance & autostart verification
   if (p === '/api/health') {
-    return sendJson(res, 200, { ok: true, app: 'ekoni-sql-studio', version: '2.5.0', uptime: process.uptime() });
+    return sendJson(res, 200, {
+      ok: true,
+      app: 'ekoni-sql-studio',
+      version: '2.5.0',
+      runtime: IS_SERVERLESS ? 'serverless' : 'node',
+      uptime: process.uptime(),
+    }, req);
   }
 
   // Real Live MySQL 9.7 / 8.4 / 26.x / MariaDB Connection Manager
@@ -450,29 +463,32 @@ async function handleRequest(req, res) {
     return;
   }
 
-  fs.readFile(fullPath, (err, data) => {
-    if (err) {
-      res.writeHead(404, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' });
-      res.end('Not Found');
-      return;
-    }
+  try {
+    const data = await fs.promises.readFile(fullPath);
     const ext = path.extname(fullPath).toLowerCase();
     sendCompressed(req, res, 200, {
       'Content-Type': MIME_TYPES[ext] || 'application/octet-stream',
       'Cache-Control': 'no-cache',
     }, data);
+  } catch {
+    res.writeHead(404, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' });
+    res.end('Not Found');
+  }
+}
+
+function serverHandler(req, res) {
+  return handleRequest(req, res).catch((err) => {
+    try {
+      if (!res.headersSent) {
+        res.writeHead(500, { ...SECURITY_HEADERS, 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ ok: false, error: err && err.message ? err.message : 'Internal Server Error' }));
+      }
+    } catch {}
   });
 }
 
 function createServer() {
-  return http.createServer((req, res) => {
-    handleRequest(req, res).catch((err) => {
-      try {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: false, error: err.message }));
-      } catch {}
-    });
-  });
+  return http.createServer(serverHandler);
 }
 
 if (require.main === module) {
@@ -516,4 +532,9 @@ if (require.main === module) {
   process.on('SIGTERM', shutdown);
 }
 
-module.exports = { createServer, engine, SECURITY_HEADERS };
+serverHandler.createServer = createServer;
+serverHandler.engine = engine;
+serverHandler.SECURITY_HEADERS = SECURITY_HEADERS;
+serverHandler.handleRequest = handleRequest;
+
+module.exports = serverHandler;

@@ -372,6 +372,53 @@ async function runTests() {
       srv.engine.closeAll();
     });
 
+    await (async () => {
+      const vercelHandler = require('../api/index');
+      const invoke = (method, url, body) =>
+        new Promise((resolve) => {
+          let status = 200;
+          let headers = {};
+          let chunks = [];
+          const req = { method, url, headers: { host: 'ekoni-sql-studio.vercel.app', 'x-forwarded-proto': 'https' }, body };
+          const res = {
+            headersSent: false,
+            writeHead(s, h) { status = s; headers = h || {}; this.headersSent = true; },
+            end(data) {
+              if (data) chunks.push(Buffer.isBuffer(data) ? data : Buffer.from(String(data)));
+              resolve({ status, headers, body: Buffer.concat(chunks).toString('utf8') });
+            },
+          };
+          vercelHandler(req, res);
+        });
+
+      const h = await invoke('GET', '/api/index?__ekoni_path=health');
+      assert.strictEqual(h.status, 200);
+      assert.strictEqual(JSON.parse(h.body).app, 'ekoni-sql-studio');
+
+      const dbs = await invoke('GET', '/api/index?__ekoni_path=databases&connId=builtin');
+      assert.strictEqual(dbs.status, 200);
+      assert.ok(JSON.parse(dbs.body).databases.some((d) => d.name === 'ecommerce.db'));
+
+      const q = await invoke('POST', '/api/index?__ekoni_path=query', {
+        db: 'ecommerce.db',
+        skipHistory: true,
+        sql: "SELECT VERSION() AS ver, VECTOR_DIM(STRING_TO_VECTOR('[1,2,3]')) AS d;",
+      });
+      assert.strictEqual(q.status, 200);
+      const qJson = JSON.parse(q.body);
+      assert.strictEqual(qJson.ok, true, qJson.error);
+      assert.strictEqual(qJson.results[0].rows[0].d, 3);
+      assert.ok(qJson.results[0].rows[0].ver.includes('9.7.4-LTS-EkoniSQL'));
+
+      const rest = await invoke('GET', '/api/index?__ekoni_path=rest/ecommerce.db/products&limit=5');
+      assert.strictEqual(rest.status, 200);
+      assert.strictEqual(JSON.parse(rest.body).data.length, 5);
+
+      require('../server').engine.closeAll();
+      passed++;
+      console.log('  \x1b[32m✓\x1b[0m Vercel Serverless Entrypoint (api/index.js, rewrites & pre-parsed POST body)');
+    })();
+
     console.log(`\n\x1b[1;32mAll ${passed} SQL Studio test suites passed!\x1b[0m\n`);
   } finally {
     engine.closeAll();
