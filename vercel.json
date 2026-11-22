@@ -1,15 +1,19 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "outputDirectory": "public",
   "functions": {
     "api/index.js": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "includeFiles": "{public/**,node_modules/sql.js/dist/**}"
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api/index?__ekoni_path=$1"
+    },
+    {
+      "source": "/",
+      "destination": "/api/index?__ekoni_path=__root__"
     }
   ],
   "headers": [

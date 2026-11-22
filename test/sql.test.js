@@ -414,9 +414,46 @@ async function runTests() {
       assert.strictEqual(rest.status, 200);
       assert.strictEqual(JSON.parse(rest.body).data.length, 5);
 
+      const rootHtml = await invoke('GET', '/api/index?__ekoni_path=__root__');
+      assert.strictEqual(rootHtml.status, 200);
+      assert.ok(rootHtml.body.includes('EKONI SQL'));
+
       require('../server').engine.closeAll();
       passed++;
-      console.log('  \x1b[32m✓\x1b[0m Vercel Serverless Entrypoint (api/index.js, rewrites & pre-parsed POST body)');
+      console.log('  \x1b[32m✓\x1b[0m Vercel Serverless Entrypoint (api/index.js, root HTML, rewrites & pre-parsed POST body)');
+    })();
+
+    await (async () => {
+      const wasmDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ekoni-wasm-test-'));
+      const wasmEngine = new SqlEngine(wasmDir, { forceWasm: true, lazyInit: true });
+      try {
+        const drv = await wasmEngine.ensureReady();
+        assert.strictEqual(drv, 'sql.js-wasm');
+
+        const schema = wasmEngine.getSchema('ecommerce.db');
+        assert.ok(schema.tables.length >= 5);
+
+        const q = wasmEngine.executeQuery(
+          ':memory:',
+          `
+          CREATE TABLE docs (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(80), vec VECTOR(3)) ENGINE=InnoDB;
+          INSERT INTO docs (title, vec) VALUES ('a', STRING_TO_VECTOR('[1,0,0]')), ('b', STRING_TO_VECTOR('[0,1,0]'));
+          SELECT CONCAT(title, ':', VECTOR_DIM(vec)) AS tag, DISTANCE(vec, STRING_TO_VECTOR('[1,0,0]')) AS d, VERSION() AS v FROM docs ORDER BY d ASC;
+          `
+        );
+        assert.strictEqual(q.ok, true, q.error);
+        const sel = q.results[q.results.length - 1];
+        assert.strictEqual(sel.rows[0].tag, 'a:3');
+        assert.strictEqual(sel.rows[0].d, 0);
+        assert.strictEqual(sel.rows[1].d, 1);
+        assert.ok(sel.rows[0].v.includes('9.7.4-LTS-EkoniSQL'));
+
+        passed++;
+        console.log('  \x1b[32m✓\x1b[0m Pure-WASM sql.js Fallback Driver (universal Node 18/20/22/24 & Vercel compatibility)');
+      } finally {
+        wasmEngine.closeAll();
+        fs.rmSync(wasmDir, { recursive: true, force: true });
+      }
     })();
 
     console.log(`\n\x1b[1;32mAll ${passed} SQL Studio test suites passed!\x1b[0m\n`);

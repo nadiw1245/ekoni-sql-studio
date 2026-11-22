@@ -14,6 +14,7 @@ const { COOKBOOK } = require('./server/seed-data');
 
 const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY);
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const INDEX_HTML_FILE = path.join(__dirname, 'public', 'index.html');
 const DATA_DIR = process.env.EKONI_DATA_DIR || (IS_SERVERLESS ? path.join(os.tmpdir(), 'ekoni-sql-data') : path.join(__dirname, 'data'));
 const DEFAULT_PORT = parseInt(process.env.PORT || '3344', 10);
 
@@ -27,10 +28,21 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon',
 };
 
-const engine = new SqlEngine(DATA_DIR);
+const engine = new SqlEngine(DATA_DIR, { lazyInit: IS_SERVERLESS });
 const history = new QueryHistoryStore(path.join(DATA_DIR, 'query_history.json'));
 const bookmarks = new BookmarkStore(path.join(DATA_DIR, 'bookmarks.json'));
 const mysqlMgr = new MySqlManager(DATA_DIR);
+
+let readyPromise = null;
+function ensureAppReady() {
+  if (!readyPromise) {
+    readyPromise = engine.ensureReady().catch((err) => {
+      readyPromise = null;
+      throw err;
+    });
+  }
+  return readyPromise;
+}
 
 function readJsonBody(req) {
   // Vercel & serverless runtimes pre-parse req.body before invoking the handler
@@ -86,6 +98,8 @@ function sendJson(res, status, payload, req) {
 async function handleApi(req, res, urlObj) {
   const p = urlObj.pathname;
 
+  await ensureAppReady();
+
   // Health probe for single-instance & autostart verification
   if (p === '/api/health') {
     return sendJson(res, 200, {
@@ -93,6 +107,8 @@ async function handleApi(req, res, urlObj) {
       app: 'ekoni-sql-studio',
       version: '2.5.0',
       runtime: IS_SERVERLESS ? 'serverless' : 'node',
+      driver: engine.driverName,
+      node: process.version,
       uptime: process.uptime(),
     }, req);
   }
@@ -456,7 +472,7 @@ async function handleRequest(req, res) {
   }
 
   const safeRel = urlObj.pathname === '/' ? 'index.html' : urlObj.pathname.replace(/^\/+/, '');
-  const fullPath = path.resolve(PUBLIC_DIR, safeRel);
+  const fullPath = safeRel === 'index.html' ? INDEX_HTML_FILE : path.resolve(PUBLIC_DIR, safeRel);
   if (fullPath !== PUBLIC_DIR && !fullPath.startsWith(PUBLIC_DIR + path.sep)) {
     res.writeHead(403, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' });
     res.end('Forbidden');

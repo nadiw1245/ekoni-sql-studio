@@ -6,7 +6,9 @@ module.exports = async function vercelHandler(req, res) {
   try {
     const parsed = new URL(req.url || '/', 'http://127.0.0.1');
     const routed = parsed.searchParams.get('__ekoni_path');
-    if (routed !== null) {
+    if (routed === '__root__') {
+      req.url = '/';
+    } else if (routed !== null) {
       parsed.searchParams.delete('__ekoni_path');
       const qs = parsed.searchParams.toString();
       req.url = '/api/' + routed.replace(/^\/+/, '') + (qs ? '?' + qs : '');

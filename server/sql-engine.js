@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { DatabaseSync } = require('node:sqlite');
+const sqliteDriver = require('./sqlite-driver');
 const { ECOMMERCE_SEED, HR_ANALYTICS_SEED } = require('./seed-data');
 const { registerCompatFunctions, transpileSql, tryHandleMetaCommand } = require('./mysql-compat');
 
@@ -184,23 +184,49 @@ function sqlLiteral(v) {
 }
 
 class SqlEngine {
-  constructor(dataDir) {
+  constructor(dataDir, opts = {}) {
     this.dataDir = dataDir;
-    fs.mkdirSync(this.dataDir, { recursive: true });
+    this.forceWasm = Boolean(opts.forceWasm);
+    this.driverName = !this.forceWasm && sqliteDriver.hasNativeSqlite() ? 'node:sqlite' : 'sql.js-wasm';
+    this._seeded = false;
+    try { fs.mkdirSync(this.dataDir, { recursive: true }); } catch {}
     this.connections = new Map();
-    this._ensureStarterDbs();
+    if (!opts.lazyInit && !this.forceWasm && sqliteDriver.hasNativeSqlite()) {
+      this._ensureStarterDbs();
+    }
+  }
+
+  async ensureReady() {
+    if (!this.forceWasm && sqliteDriver.hasNativeSqlite()) {
+      try {
+        this.driverName = await sqliteDriver.ensureDriverReady(false);
+        if (!this._seeded) this._ensureStarterDbs();
+        return this.driverName;
+      } catch {
+        // Fallback to pure WASM if native sqlite fails in restricted serverless runtime
+        this.forceWasm = true;
+        this._seeded = false;
+        this.closeAll();
+      }
+    }
+    this.driverName = await sqliteDriver.ensureDriverReady(true);
+    if (!this._seeded) {
+      this._ensureStarterDbs();
+    }
+    return this.driverName;
   }
 
   _ensureStarterDbs() {
+    this._seeded = true;
     const ecomPath = path.join(this.dataDir, 'ecommerce.db');
     if (!fs.existsSync(ecomPath)) {
-      const db = new DatabaseSync(ecomPath);
+      const db = sqliteDriver.openDatabase(ecomPath, this.forceWasm);
       db.exec(ECOMMERCE_SEED);
       db.close();
     }
     const hrPath = path.join(this.dataDir, 'tech_hr.db');
     if (!fs.existsSync(hrPath)) {
-      const db = new DatabaseSync(hrPath);
+      const db = sqliteDriver.openDatabase(hrPath, this.forceWasm);
       db.exec(HR_ANALYTICS_SEED);
       db.close();
     }
@@ -225,10 +251,10 @@ class SqlEngine {
       return this.connections.get(clean);
     }
     const location = clean === ':memory:' ? ':memory:' : this._resolveDbPath(clean);
-    const db = new DatabaseSync(location);
+    const db = sqliteDriver.openDatabase(location, this.forceWasm);
     db.exec('PRAGMA foreign_keys = ON;');
-    db.exec('PRAGMA busy_timeout = 5000;');
-    if (clean !== ':memory:') {
+    try { db.exec('PRAGMA busy_timeout = 5000;'); } catch {}
+    if (clean !== ':memory:' && this.driverName === 'node:sqlite') {
       try { db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;'); } catch {}
     }
     registerCompatFunctions(db, () => clean);

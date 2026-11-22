@@ -2,9 +2,8 @@
   "name": "ekoni-sql-studio",
   "version": "2.5.0",
   "description": "Next-generation MySQL 9.7 LTS & phpMyAdmin Pro SQL Workbench — built-in AI VECTOR(N) SQL, live MySQL/Cloud SSL connections, Visual Query Builder, Data Profiler, Draggable ER Designer, Instant REST API & ORM Codegen, and 12 EKONI themes.",
-  "main": "server.js",
   "engines": {
-    "node": "24.x"
+    "node": ">=20.0.0"
   },
   "keywords": [
     "sql",
@@ -36,6 +35,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "mysql2": "^3.24.6"
+    "mysql2": "^3.24.6",
+    "sql.js": "^1.17.0"
   }
 }
