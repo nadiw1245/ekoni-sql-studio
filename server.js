@@ -31,7 +31,7 @@ const MIME_TYPES = {
 const engine = new SqlEngine(DATA_DIR, { lazyInit: IS_SERVERLESS });
 const history = new QueryHistoryStore(path.join(DATA_DIR, 'query_history.json'));
 const bookmarks = new BookmarkStore(path.join(DATA_DIR, 'bookmarks.json'));
-const mysqlMgr = new MySqlManager(DATA_DIR);
+const mysqlMgr = new MySqlManager(DATA_DIR, { isCloud: IS_SERVERLESS });
 
 let readyPromise = null;
 function ensureAppReady() {
@@ -117,9 +117,10 @@ async function handleApi(req, res, urlObj) {
   if (p === '/api/mysql/status' && req.method === 'GET') {
     return sendJson(res, 200, {
       ok: true,
+      isCloud: IS_SERVERLESS,
       ...mysqlMgr.detectLocalBinaries(),
       profiles: mysqlMgr.listProfiles(),
-    });
+    }, req);
   }
   if (p === '/api/mysql/profiles' && req.method === 'POST') {
     const body = await readJsonBody(req);

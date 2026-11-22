@@ -1177,7 +1177,7 @@ ORDER BY net_revenue DESC;`;
     _readConnForm() {
       return {
         name: document.getElementById('cfName').value.trim(),
-        host: document.getElementById('cfHost').value.trim() || '127.0.0.1',
+        host: document.getElementById('cfHost').value.trim(),
         port: parseInt(document.getElementById('cfPort').value, 10) || 3306,
         user: document.getElementById('cfUser').value.trim() || 'root',
         password: document.getElementById('cfPass').value,
@@ -1192,8 +1192,24 @@ ORDER BY net_revenue DESC;`;
       document.getElementById('cfTestResult').textContent = '';
       const st = await this.apiFetch('/api/mysql/status');
       document.getElementById('startXamppBtn').classList.toggle('hidden', !st.hasXampp);
+
+      const hostInput = document.getElementById('cfHost');
+      const sslInput = document.getElementById('cfSsl');
+      if (st.isCloud) {
+        if (hostInput.value === '127.0.0.1') hostInput.value = '';
+        hostInput.placeholder = 'e.g. mysql-xxx.aivencloud.com or gateway01.tidbcloud.com';
+        sslInput.checked = true;
+      } else {
+        if (!hostInput.value) hostInput.value = '127.0.0.1';
+        hostInput.placeholder = '127.0.0.1 or cloud host';
+      }
+
       const list = document.getElementById('connProfilesList');
       const profiles = st.profiles || [];
+      const cloudHint = st.isCloud
+        ? '<div class="muted" style="font-size:12px;line-height:1.5;padding:6px 2px">Running on <strong>Cloud (Vercel)</strong>: <code>127.0.0.1</code> cannot reach your PC from cloud servers. Use the <strong>Built-in MySQL 9.7 Engine</strong> above, or add a public <strong>Cloud MySQL</strong> host below (Aiven, TiDB Cloud, Railway, AWS RDS) with <strong>SSL / TLS</strong> checked. For local XAMPP (<code>127.0.0.1:3306</code>), open <code>http://localhost:3344</code> on your PC.</div>'
+        : '<div class="muted">No saved MySQL profiles yet. Add one below.</div>';
+
       list.innerHTML = profiles.length
         ? profiles
             .map(
@@ -1210,7 +1226,7 @@ ORDER BY net_revenue DESC;`;
           </div>`
             )
             .join('')
-        : '<div class="muted">No saved MySQL profiles yet. Add one below.</div>';
+        : cloudHint;
 
       list.querySelectorAll('[data-connect-pid]').forEach((b) => {
         b.addEventListener('click', () => {

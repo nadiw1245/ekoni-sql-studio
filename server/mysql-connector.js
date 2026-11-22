@@ -34,8 +34,9 @@ const DEFAULT_CONNECTIONS = [
 ];
 
 class MySqlManager {
-  constructor(dataDir) {
+  constructor(dataDir, opts = {}) {
     this.filePath = path.join(dataDir, 'connections.json');
+    this.isCloud = Boolean(opts.isCloud);
     this.profiles = [];
     this.pools = new Map(); // id -> { pool, config }
     this._load();
@@ -45,14 +46,15 @@ class MySqlManager {
     try {
       if (fs.existsSync(this.filePath)) {
         const parsed = JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
-        if (Array.isArray(parsed) && parsed.length) {
+        if (Array.isArray(parsed)) {
           this.profiles = parsed;
           return;
         }
       }
     } catch {}
-    this.profiles = DEFAULT_CONNECTIONS.slice();
-    this._save();
+    // Only pre-populate local 127.0.0.1 XAMPP profile when running locally, never on cloud serverless!
+    this.profiles = this.isCloud ? [] : DEFAULT_CONNECTIONS.slice();
+    if (!this.isCloud) this._save();
   }
 
   _save() {
@@ -193,12 +195,24 @@ class MySqlManager {
     const cfg = typeof configOrId === 'string' ? this.getProfile(configOrId) : configOrId;
     if (!cfg) return { ok: false, error: 'Invalid connection settings' };
 
+    const host = String(cfg.host || '').trim() || '127.0.0.1';
+    const port = parseInt(cfg.port, 10) || 3306;
+    const isLoopback = host === '127.0.0.1' || host.toLowerCase() === 'localhost' || host === '::1';
+
+    if (this.isCloud && isLoopback) {
+      return {
+        ok: false,
+        error:
+          'Cannot connect to localhost (127.0.0.1) from Vercel Cloud. Enter a public Cloud MySQL host (Aiven, TiDB Cloud, Railway, AWS RDS) with SSL/TLS enabled — or open http://localhost:3344 on your PC to connect to XAMPP/local MySQL.',
+      };
+    }
+
     const t0 = Date.now();
     let conn = null;
     try {
       conn = await driver.createConnection({
-        host: cfg.host || '127.0.0.1',
-        port: parseInt(cfg.port, 10) || 3306,
+        host,
+        port,
         user: cfg.user || 'root',
         password: cfg.password || '',
         database: cfg.database || undefined,
@@ -218,7 +232,17 @@ class MySqlManager {
       };
     } catch (err) {
       if (conn) try { await conn.end(); } catch {}
-      return { ok: false, error: err.message || String(err) };
+      const rawMsg = err.message || String(err);
+      if (isLoopback && /ECONNREFUSED/i.test(rawMsg)) {
+        const det = this.detectLocalBinaries();
+        return {
+          ok: false,
+          error: det.hasXampp
+            ? `Local MySQL (${host}:${port}) is not running yet. Click "Start Local XAMPP MySQL (3306)" above, wait 2 seconds, then click Connect Live.`
+            : `No MySQL server is listening on ${host}:${port}. Start your local MySQL service (or run install-mysql-latest.bat), then retry.`,
+        };
+      }
+      return { ok: false, error: rawMsg };
     }
   }
 
