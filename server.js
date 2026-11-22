@@ -466,6 +466,15 @@ async function handleApi(req, res, urlObj) {
 
 async function handleRequest(req, res) {
   const urlObj = new URL(req.url || '/', 'http://127.0.0.1');
+  const routed = urlObj.searchParams.get('__ekoni_path');
+  if (routed === '__root__') {
+    urlObj.pathname = '/';
+    urlObj.searchParams.delete('__ekoni_path');
+  } else if (routed !== null) {
+    urlObj.pathname = '/api/' + routed.replace(/^\/+/, '');
+    urlObj.searchParams.delete('__ekoni_path');
+  }
+
   if (urlObj.pathname.startsWith('/api/')) {
     const handled = await handleApi(req, res, urlObj);
     if (handled !== false) return;

@@ -418,7 +418,19 @@ async function runTests() {
       assert.strictEqual(rootHtml.status, 200);
       assert.ok(rootHtml.body.includes('EKONI SQL'));
 
-      require('../server').engine.closeAll();
+      // Also verify direct root server.js handler with __ekoni_path query param
+      const directServer = require('../server');
+      const directHealth = await new Promise((resolve) => {
+        let st = 200, chunks = [];
+        directServer(
+          { method: 'GET', url: '/api/index?__ekoni_path=health', headers: {} },
+          { headersSent: false, writeHead(s) { st = s; this.headersSent = true; }, end(d) { if (d) chunks.push(Buffer.from(String(d))); resolve({ st, body: Buffer.concat(chunks).toString('utf8') }); } }
+        );
+      });
+      assert.strictEqual(directHealth.st, 200);
+      assert.strictEqual(JSON.parse(directHealth.body).app, 'ekoni-sql-studio');
+
+      directServer.engine.closeAll();
       passed++;
       console.log('  \x1b[32m✓\x1b[0m Vercel Serverless Entrypoint (api/index.js, root HTML, rewrites & pre-parsed POST body)');
     })();
